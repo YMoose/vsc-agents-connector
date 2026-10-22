@@ -3,11 +3,11 @@ import { test } from "node:test"
 import {
   connectionFromService,
   listSessions,
-  matchWorkspace,
   parseServiceInfo,
   registrationFiles,
   serviceStateDir,
-} from "../src/discover.js"
+} from "../src/agents/opencode/discover.js"
+import { matchWorkspace } from "../src/connector/workspace.js"
 
 // ---------------------------------------------------------------------------
 // serviceStateDir / registrationFiles

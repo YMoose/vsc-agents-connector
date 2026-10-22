@@ -4,6 +4,33 @@ VS Code extension that connects the editor to coding agents — currently
 [opencode](https://opencode.ai), with the VS Code side abstracted so more agents
 can be plugged in later.
 
+## Architecture: three layers
+
+```
+┌─ Layer 1  src/context/    read & watch the VS Code editor (snapshot only)
+├─ Layer 2  src/connector/  agent registry, connection persistence, dispatch
+└─ Layer 3  src/agents/     per-agent protocol (opencode today)
+```
+
+- **Layer 1 — `src/context/`** talks only to the `vscode` API. It produces an
+  `EditorSnapshot` (`{ fsPath, relativePath, workspaceFolder, selection? }`)
+  and watches selection/active-editor changes with debounce + dedupe. It knows
+  nothing about agents or reference formatting.
+- **Layer 2 — `src/connector/`** owns the single active connection. It keeps a
+  registry of `AgentAdapter`s, persists the connection (secret header in
+  SecretStorage, the rest per-workspace), renders the status bar, and routes
+  Layer-1 snapshots to the active adapter's live-follow channel or its
+  explicit `sendPrompt`.
+- **Layer 3 — `src/agents/<id>/`** is the extension point. Each agent
+  implements `AgentAdapter` (`src/connector/types.ts`): session discovery,
+  `vscode://` pairing, manual connect, optional live-follow, and `sendPrompt` —
+  plus the formatting of an `EditorSnapshot` into its own reference syntax
+  (opencode: `@path#L1-2` / `file://…?start&end`). Server-side companion
+  plugins live under `bridges/` (opencode: `bridges/opencode-vsc-bridge`).
+
+Adding a new agent = implement `AgentAdapter` under `src/agents/<id>/` and
+register it in `extension.ts`. Layers 1 and 2 do not change.
+
 ## Connect: three ways, best first
 
 1. **VSC Agents: Connect to Local Service** — fully automatic. The extension reads the

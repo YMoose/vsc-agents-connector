@@ -8,4 +8,4 @@ tsconfig.json
 .gitignore
 *.vsix
 docs
-opencode-vsc-bridge
+bridges

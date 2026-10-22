@@ -125,14 +125,3 @@ function readTime(time: unknown): number | undefined {
   const updated = (time as Record<string, unknown>).updated
   return typeof updated === "number" ? updated : undefined
 }
-
-/** Pick the session whose directory best matches a workspace folder. */
-export function matchWorkspace(sessions: ReadonlyArray<SessionSummary>, workspacePath: string): SessionSummary | undefined {
-  const normalized = workspacePath.replace(/\/+$/, "")
-  const exact = sessions.find((session) => session.directory?.replace(/\/+$/, "") === normalized)
-  if (exact) return exact
-  return sessions.find((session) => {
-    const directory = session.directory?.replace(/\/+$/, "")
-    return directory && (normalized.startsWith(`${directory}/`) || directory.startsWith(`${normalized}/`))
-  })
-}

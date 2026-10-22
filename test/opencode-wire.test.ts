@@ -11,7 +11,7 @@ import {
   redeemPairingCode,
   PairingError,
   type Connection,
-} from "../src/wire.js"
+} from "../src/agents/opencode/wire.js"
 
 // ---------------------------------------------------------------------------
 // authorizationHeader
@@ -184,7 +184,7 @@ test("promptRequest throws ApiError with the status on failure", async () => {
 // ---------------------------------------------------------------------------
 
 test("bridgeCall posts the chip text to the plugin RPC endpoint", async () => {
-  const { bridgeCall } = await import("../src/wire.js")
+  const { bridgeCall } = await import("../src/agents/opencode/wire.js")
   const { calls, fetchFn } = capturingFetch(() => jsonResponse({}))
   await bridgeCall({ url: "http://h:1" }, { type: "token", token: "t" }, "update", "@src/a.ts#L1-2", fetchFn)
   assert.equal(calls[0].url, "http://h:1/api/rpc/opencode-vsc-bridge/update")
@@ -193,7 +193,7 @@ test("bridgeCall posts the chip text to the plugin RPC endpoint", async () => {
 })
 
 test("bridgeCall throws BridgeUnavailableError on failure", async () => {
-  const { bridgeCall, BridgeUnavailableError } = await import("../src/wire.js")
+  const { bridgeCall, BridgeUnavailableError } = await import("../src/agents/opencode/wire.js")
   const { fetchFn } = capturingFetch(() => new Response("nope", { status: 404 }))
   const err = await bridgeCall({ url: "http://h" }, { type: "token", token: "" }, "pin", "x", fetchFn).catch(
     (e) => e,
@@ -203,7 +203,7 @@ test("bridgeCall throws BridgeUnavailableError on failure", async () => {
 })
 
 test("bridgeCall scopes the event with location[directory] when given", async () => {
-  const { bridgeCall } = await import("../src/wire.js")
+  const { bridgeCall } = await import("../src/agents/opencode/wire.js")
   const { calls, fetchFn } = capturingFetch(() => jsonResponse({}))
   await bridgeCall({ url: "http://h:1" }, { type: "token", token: "t" }, "update", "@a.ts", fetchFn, "/work/dir")
   assert.equal(

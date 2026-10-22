@@ -27,12 +27,12 @@ Three RPC methods, each taking `{ input: { text } }`:
 
 ## The plugin
 
-`opencode-vsc-bridge/index.ts` is a v2 server plugin. Register it in
+`bridges/opencode-vsc-bridge/index.ts` is a v2 server plugin. Register it in
 `~/.config/opencode/opencode.json` as a **directory** (v2 rejects a file
 target with `configured plugin path must be a directory`):
 
 ```json
-"plugin": ["<this-repo>/opencode-vsc-bridge"]
+"plugin": ["<this-repo>/bridges/opencode-vsc-bridge"]
 ```
 
 It resolves the entry as `server.ts` else `index.ts`. Its `node_modules`
