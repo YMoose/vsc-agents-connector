@@ -7,7 +7,6 @@ import {
   registrationFiles,
   serviceStateDir,
 } from "../src/agents/opencode/discover.js"
-import { matchWorkspace } from "../src/connector/workspace.js"
 
 // ---------------------------------------------------------------------------
 // serviceStateDir / registrationFiles
@@ -96,26 +95,4 @@ test("listSessions sends the authorization header and directory filter", async (
   await listSessions({ url: "http://h" }, { type: "basic", password: "pw" }, { directory: "/repo" }, fetchFn)
   assert.match(seen[0].url, /directory=%2Frepo/)
   assert.equal(seen[0].auth, `Basic ${Buffer.from("opencode:pw").toString("base64")}`)
-})
-
-// ---------------------------------------------------------------------------
-// matchWorkspace
-// ---------------------------------------------------------------------------
-
-test("matchWorkspace prefers an exact directory match", () => {
-  const sessions = [
-    { id: "ses_1", directory: "/repo/sub" },
-    { id: "ses_2", directory: "/repo" },
-  ]
-  assert.equal(matchWorkspace(sessions, "/repo/")?.id, "ses_2")
-})
-
-test("matchWorkspace falls back to a containing directory", () => {
-  const sessions = [{ id: "ses_1", directory: "/repo" }]
-  assert.equal(matchWorkspace(sessions, "/repo/packages/app")?.id, "ses_1")
-})
-
-test("matchWorkspace returns undefined without any overlap", () => {
-  assert.equal(matchWorkspace([{ id: "ses_1", directory: "/repo" }], "/elsewhere"), undefined)
-  assert.equal(matchWorkspace([{ id: "ses_1" }], "/repo"), undefined)
 })

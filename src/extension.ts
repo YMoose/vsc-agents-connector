@@ -14,7 +14,7 @@ import * as vscode from "vscode"
 import { readEditorSnapshot, ContextWatcher } from "./context/watcher"
 import { ConnectionManager } from "./connector/manager"
 import { allAdapters, getAdapter, registerAdapter } from "./connector/registry"
-import { matchWorkspace } from "./connector/workspace"
+import { filterByWorkspace } from "./connector/workspace"
 import type { AgentAdapter } from "./connector/types"
 import { createOpencodeAdapter, manualConnect } from "./agents/opencode"
 
@@ -114,8 +114,10 @@ async function connectFromService() {
   }
 
   const workspace = workspacePath()
+  // Only offer sessions rooted at the workspace folder: the context we send
+  // is a workspace-relative path, which a session elsewhere cannot resolve.
   const items = candidates.flatMap(({ adapter, url, header, sessions }) =>
-    sessions.map((session) => ({
+    filterByWorkspace(sessions, workspace ?? "").map((session) => ({
       label: `[${adapter.displayName}] ${session.title || session.id}`,
       description: session.id,
       detail: session.directory,
@@ -125,16 +127,21 @@ async function connectFromService() {
       session,
     })),
   )
-  const all = items.map((item) => item.session)
-  const preferred = workspace ? matchWorkspace(all, workspace) : undefined
 
-  const picked = await vscode.window.showQuickPick(
-    items.map((item) => ({
-      ...item,
-      label: item.session.id === preferred?.id ? `$(check) ${item.label}` : item.label,
-    })),
-    { title: "Connect to an agent session", placeHolder: preferred ? "The session matching this workspace is checked" : "Pick a session" },
-  )
+  if (items.length === 0) {
+    const where = workspace ?? "this workspace"
+    const pick = await vscode.window.showInformationMessage(
+      `VSC Agents: no agent session matches ${where}. Start one in this directory, or connect manually.`,
+      "Connect manually…",
+    )
+    if (pick) await connectInteractive()
+    return
+  }
+
+  const picked = await vscode.window.showQuickPick(items, {
+    title: "Connect to an agent session",
+    placeHolder: items.length === 1 ? "The only session in this workspace" : "Pick a session in this workspace",
+  })
   if (!picked) return
 
   await manager?.connect({
