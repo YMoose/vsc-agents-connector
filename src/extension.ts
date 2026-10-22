@@ -138,10 +138,14 @@ async function connectFromService() {
     return
   }
 
-  const picked = await vscode.window.showQuickPick(items, {
-    title: "Connect to an agent session",
-    placeHolder: items.length === 1 ? "The only session in this workspace" : "Pick a session in this workspace",
-  })
+  // Exactly one session in this workspace: connect without asking.
+  const picked =
+    items.length === 1
+      ? items[0]
+      : await vscode.window.showQuickPick(items, {
+          title: "Connect to an agent session",
+          placeHolder: "Pick a session in this workspace",
+        })
   if (!picked) return
 
   await manager?.connect({
