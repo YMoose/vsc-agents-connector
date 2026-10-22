@@ -1,0 +1,99 @@
+{
+  "name": "vsc-agents-connector",
+  "displayName": "VSC Agents Connector",
+  "description": "Connects VS Code to coding agents (opencode and more): receive a vscode:// connect link and send editor context (file + selection) to the connected agent session.",
+  "version": "0.1.0",
+  "publisher": "moose",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onUri",
+    "onStartupFinished"
+  ],
+  "main": "./out/src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscAgents.connect",
+        "title": "VSC Agents: Connect to Session"
+      },
+      {
+        "command": "vscAgents.connectService",
+        "title": "VSC Agents: Connect to Local Service"
+      },
+      {
+        "command": "vscAgents.disconnect",
+        "title": "VSC Agents: Disconnect"
+      },
+      {
+        "command": "vscAgents.sendSelection",
+        "title": "VSC Agents: Send Selection to Session",
+        "enablement": "editorHasSelection"
+      },
+      {
+        "command": "vscAgents.sendFile",
+        "title": "VSC Agents: Send File Reference to Session",
+        "enablement": "editorActive"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "vscAgents.sendSelection",
+          "when": "editorHasSelection",
+          "group": "vscAgents@1"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "vscAgents.sendFile",
+          "group": "vscAgents@1"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "vscAgents.sendSelection",
+        "key": "alt+ctrl+o",
+        "mac": "cmd+alt+o",
+        "when": "editorHasSelection"
+      }
+    ],
+    "configuration": {
+      "title": "VSC Agents Connector",
+      "properties": {
+        "vscAgents.liveFollow": {
+          "type": "boolean",
+          "default": true,
+          "description": "Continuously mirror the current file/selection into the connected agent's TUI prompt (via the agent's live-follow bridge plugin, e.g. opencode-vsc-bridge for opencode)."
+        },
+        "vscAgents.followDebounceMs": {
+          "type": "number",
+          "default": 150,
+          "minimum": 50,
+          "description": "Debounce for live-follow updates, in milliseconds."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "node --test \"out/test/**/*.test.js\"",
+    "pretest": "tsc -p .",
+    "check": "tsc -p . --noEmit",
+    "package": "vsce package --no-dependencies --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^4.0.0",
+    "typescript": "^5.7.0"
+  }
+}

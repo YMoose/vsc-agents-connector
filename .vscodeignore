@@ -1,0 +1,11 @@
+node_modules
+src
+test
+out/test
+**/*.map
+tsconfig.json
+.git
+.gitignore
+*.vsix
+docs
+opencode-vsc-bridge
