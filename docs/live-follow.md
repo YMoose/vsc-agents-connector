@@ -61,7 +61,7 @@ folder.
 
 ```bash
 cd <workdir>          # the directory the chip should route to
-cd /home/user/yzh/opencode/packages/cli
+cd /home/user/opencode/packages/cli
 OPENCODE_TUI_CHANNEL=dev \
 OPENCODE_PASSWORD="$(opencode service get password)" \
 bun run src/index.ts --server "$(opencode service status)" <workdir>
@@ -106,7 +106,7 @@ readable `file://` URL or the server rejects the prompt with
 line range as `?start=9&end=19` query params — the server's
 `SessionPrompt.readFileAttachment` reads `file:` URLs and honors exactly
 those params. So a chip `@.oxlintrc.json#L9-19` becomes
-`file:///home/user/yzh/opencode/.oxlintrc.json?start=9&end=19`. Do not
+`file:///home/user/opencode/.oxlintrc.json?start=9&end=19`. Do not
 put the `#L…` fragment into the URI itself; it is display text only.
 
 That change is intentionally not committed upstream — it is a local

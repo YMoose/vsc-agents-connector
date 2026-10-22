@@ -2,8 +2,8 @@
 // extension over the plugin RPC endpoint and re-emits it as live events that
 // the (patched) TUI mirrors into the prompt input.
 //
-// Load from opencode.json:
-//   { "plugins": ["file:///home/user/yzh/opencode/vsc-agents-connector/opencode-vsc-bridge/index.ts"] }
+// Load from opencode.json (use the absolute path on your machine):
+//   { "plugins": ["file:///<repo>/bridges/opencode-vsc-bridge/index.ts"] }
 
 import { Plugin, Rpc } from "@opencode/plugin/effect"
 import { Deferred, Effect, Schema } from "effect"
