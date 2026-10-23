@@ -2,7 +2,7 @@
   "name": "vsc-agents-connector",
   "displayName": "VSC Agents Connector",
   "description": "Connects VS Code to coding agents (opencode and more): receive a vscode:// connect link and send editor context (file + selection) to the connected agent session.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "moose",
   "license": "MIT",
   "private": true,
