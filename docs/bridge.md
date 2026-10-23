@@ -51,3 +51,10 @@ radius of a leaked link to "already useless".
   user re-triggers from the app.
 - `vscAgents.connect` offers a manual fallback (URL + password + session id)
   for servers without pairing and for development.
+
+## Live follow
+
+Live follow does not use this link. It talks to the server's builtin
+`editor-bridge` plugin over `POST /api/rpc/editor-bridge/<method>`; no plugin
+installation step is required. See `docs/live-follow.md` for the method
+contract and the `location[directory]` scoping gotcha.

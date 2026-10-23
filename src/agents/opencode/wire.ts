@@ -239,23 +239,23 @@ export async function probe(connection: Omit<Connection, "sessionID">, fetchFn: 
 }
 
 // ---------------------------------------------------------------------------
-// Plugin RPC (opencode-vsc-bridge live follow)
+// Plugin RPC (builtin editor-bridge live follow)
 // ---------------------------------------------------------------------------
 
 export type BridgeMethod = "update" | "pin" | "clear"
 
-/** The bridge plugin is absent (or the server predates plugin RPC). */
+/** The builtin editor bridge is absent (or the server predates plugin RPC). */
 export class BridgeUnavailableError extends Error {
   constructor(readonly status: number) {
-    super(`opencode-vsc-bridge is not reachable (server answered ${status})`)
+    super(`editor-bridge is not reachable (server answered ${status})`)
     this.name = "BridgeUnavailableError"
   }
 }
 
 /**
- * POST /api/rpc/opencode-vsc-bridge/<method> — push a live chip update to the
- * TUI through the bridge plugin. Throws BridgeUnavailableError when the plugin
- * is not registered, so callers can fall back to the prompt flow.
+ * POST /api/rpc/editor-bridge/<method> — push a live chip update to the
+ * TUI through the builtin editor bridge. Throws BridgeUnavailableError when
+ * the bridge is not registered, so callers can fall back to the prompt flow.
  *
  * `directory` scopes the emitted event to a server location so only TUIs
  * attached to that directory render the chip (defaults to the service's cwd).
@@ -269,7 +269,7 @@ export async function bridgeCall(
   directory?: string,
 ): Promise<void> {
   const query = directory ? `?location[directory]=${encodeURIComponent(directory)}` : ""
-  const response = await fetchFn(`${server.url}/api/rpc/opencode-vsc-bridge/${method}${query}`, {
+  const response = await fetchFn(`${server.url}/api/rpc/editor-bridge/${method}${query}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",

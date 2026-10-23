@@ -71,7 +71,7 @@
         "vscAgents.liveFollow": {
           "type": "boolean",
           "default": true,
-          "description": "Continuously mirror the current file/selection into the connected agent's TUI prompt (via the agent's live-follow bridge plugin, e.g. opencode-vsc-bridge for opencode)."
+          "description": "Continuously mirror the current file/selection into the connected agent's TUI prompt (via the agent's builtin live-follow bridge, e.g. editor-bridge for opencode)."
         },
         "vscAgents.followDebounceMs": {
           "type": "number",

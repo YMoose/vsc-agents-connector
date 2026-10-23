@@ -3,7 +3,7 @@
  *
  * Implements the AgentAdapter contract for opencode: local background-service
  * discovery, vscode:// pairing, manual URL+password connect, live follow via
- * the opencode-vsc-bridge server plugin, and explicit prompts.
+ * the builtin `editor-bridge` server plugin, and explicit prompts.
  *
  * Formatting note: OpenCode renders a file reference as `@path#L1-2` in the
  * prompt and as a `file://` URI with `?start&end` when sent as an attachment.

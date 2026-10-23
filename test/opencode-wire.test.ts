@@ -187,7 +187,7 @@ test("bridgeCall posts the chip text to the plugin RPC endpoint", async () => {
   const { bridgeCall } = await import("../src/agents/opencode/wire.js")
   const { calls, fetchFn } = capturingFetch(() => jsonResponse({}))
   await bridgeCall({ url: "http://h:1" }, { type: "token", token: "t" }, "update", "@src/a.ts#L1-2", fetchFn)
-  assert.equal(calls[0].url, "http://h:1/api/rpc/opencode-vsc-bridge/update")
+  assert.equal(calls[0].url, "http://h:1/api/rpc/editor-bridge/update")
   assert.deepEqual(calls[0].body, { input: { text: "@src/a.ts#L1-2" } })
   assert.equal(new Headers(calls[0].init.headers).get("authorization"), "Bearer t")
 })
@@ -208,6 +208,6 @@ test("bridgeCall scopes the event with location[directory] when given", async ()
   await bridgeCall({ url: "http://h:1" }, { type: "token", token: "t" }, "update", "@a.ts", fetchFn, "/work/dir")
   assert.equal(
     calls[0].url,
-    "http://h:1/api/rpc/opencode-vsc-bridge/update?location[directory]=%2Fwork%2Fdir",
+    "http://h:1/api/rpc/editor-bridge/update?location[directory]=%2Fwork%2Fdir",
   )
 })

@@ -25,8 +25,9 @@ can be plugged in later.
   implements `AgentAdapter` (`src/connector/types.ts`): session discovery,
   `vscode://` pairing, manual connect, optional live-follow, and `sendPrompt` —
   plus the formatting of an `EditorSnapshot` into its own reference syntax
-  (opencode: `@path#L1-2` / `file://…?start&end`). Server-side companion
-  plugins live under `bridges/` (opencode: `bridges/opencode-vsc-bridge`).
+  (opencode: `@path#L1-2` / `file://…?start&end`). opencode's live-follow
+  bridge (`editor-bridge`) is a builtin server plugin, so it needs no
+  server-side companion plugin installation.
 
 Adding a new agent = implement `AgentAdapter` under `src/agents/<id>/` and
 register it in `extension.ts`. Layers 1 and 2 do not change.

@@ -11,10 +11,10 @@ text. With no selection the chip degrades to the bare file path.
 ```
 VS Code extension                opencode server                  TUI
 -----------------                ---------------                  ---
-LiveFollower  ── update/pin ──▶  opencode-vsc-bridge  ── SSE ──▶  prompt chip
+LiveFollower  ── update/pin ──▶  editor-bridge (builtin) ── SSE ─▶  prompt chip
  (debounced)    POST /api/rpc/    plugin (RPC → events)            (replaces
-                opencode-ide-     re-emits as                       trailing
-                bridge/<method>   rpc.opencode-vsc-bridge.*         chip)
+                editor-bridge/    re-emits as                       trailing
+                <method>          rpc.editor-bridge.*               chip)
 ```
 
 Three RPC methods, each taking `{ input: { text } }`:
@@ -25,22 +25,12 @@ Three RPC methods, each taking `{ input: { text } }`:
 | `pin`   | commit the chip as ordinary prompt text (stops being replaced)    |
 | `clear` | remove the chip                                                   |
 
-## The plugin
+## The bridge
 
-`bridges/opencode-vsc-bridge/index.ts` is a v2 server plugin. Register it in
-`~/.config/opencode/opencode.json` as a **directory** (v2 rejects a file
-target with `configured plugin path must be a directory`):
-
-```json
-"plugin": ["<this-repo>/bridges/opencode-vsc-bridge"]
-```
-
-It resolves the entry as `server.ts` else `index.ts`. Its `node_modules`
-symlinks `effect` and `@opencode/plugin` from the main repo's
-`packages/plugin/node_modules` so module resolution (and the plugin/effect
-singletons) match the host. Plugin changes need `opencode service restart`
-— `opencode reload` only calls `client.location.reload` and does not
-re-register plugins.
+The bridge is a **builtin server plugin** (`editor-bridge`) in the main opencode
+repo, so there is nothing to install or register in `opencode.json`. The
+extension only needs a running opencode server that includes it; older servers
+without the plugin simply make live follow go quiet (see below).
 
 ## Location scoping (the important gotcha)
 
@@ -81,7 +71,7 @@ Probe:
 PASSWORD=$(opencode service get password)
 URL=$(opencode service status)
 curl -sg -u "opencode:$PASSWORD" \
-  -X POST "$URL/api/rpc/opencode-vsc-bridge/update?location[directory]=<tui-dir>" \
+  -X POST "$URL/api/rpc/editor-bridge/update?location[directory]=<tui-dir>" \
   -H "content-type: application/json" -d '{"input":{"text":"@x.ts#L1-2"}}'
 # {} = bridge live; watch the event with:
 curl -sN -u "opencode:$PASSWORD" "$URL/api/event"
@@ -90,7 +80,7 @@ curl -sN -u "opencode:$PASSWORD" "$URL/api/event"
 ## TUI side (lives in the main repo, local experiment)
 
 `packages/tui/src/component/prompt/index.tsx` listens for the three
-`rpc.opencode-vsc-bridge.*` events. The chip is registered as a real file
+`rpc.editor-bridge.*` events. The chip is registered as a real file
 part + extmark so `onContentChange`'s `syncExtmarksWithPromptParts` keeps
 it aligned; an `update` rewrites the chip range (resetting extmarks first)
 and re-registers it, so rapid selection changes replace rather than append.
@@ -118,5 +108,6 @@ experiment with no config gate, living on the `ide-live-follow` branch.
 - `vscAgents.followDebounceMs` (default `150`, min `50`) — selection-change
   debounce.
 
-When the bridge plugin is absent or a connection is down, the follower goes
-quiet and explicit send falls back to the original prompt-with-input flow.
+When the builtin bridge is unavailable (older server) or a connection is
+down, the follower goes quiet and explicit send falls back to the original
+prompt-with-input flow.
