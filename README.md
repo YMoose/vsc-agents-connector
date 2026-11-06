@@ -75,3 +75,10 @@ Press `F5` to launch an Extension Development Host. Install the resulting
 Changes to the socket should be committed and pushed in its own repository before
 pushing a parent commit that references them. Updating the submodule does not
 publish the DSH plugin or install it into a user's DSH profile.
+
+Real VS Code + Chrome acceptance steps, isolated launch helpers, screenshots,
+and findings are maintained in the socket repository's
+[GUI testing guide](https://github.com/YMoose/dsh-editor-socket/blob/main/docs/testing/gui.md)
+(`vendor/dsh-editor-socket/docs/testing/gui.md` in this checkout). The guide covers
+file clicks, mouse selections, pins, unsaved buffer text, a real composer send,
+disconnect/reconnect, and wide/narrow layout checks using a local recording model.
