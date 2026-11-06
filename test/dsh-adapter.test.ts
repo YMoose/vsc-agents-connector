@@ -5,7 +5,7 @@ import type { ConnectedSession } from '../src/connector/types.js'
 
 const session: ConnectedSession = { agentId: 'dsh', sessionID: 's', directory: '/work', url: 'http://127.0.0.1:12345', header: 'Bearer test' }
 const snapshot = { fsPath: '/work/a.ts', relativePath: 'a.ts', workspaceFolder: '/work', selection: { start: 1, end: 2, text: 'unsaved' } }
-function fixture() {
+function fixture(listed = [{ sessionId: 's', title: '编辑器上下文接入', directory: '/work', status: 'idle' }]) {
   const calls: Array<{ method: string; payload: Record<string, unknown> }> = []
   const fetchFn: typeof fetch = async (_input, init) => {
     assert.equal(new Headers(init?.headers).get('authorization'), session.header)
@@ -13,7 +13,7 @@ function fixture() {
     const request = JSON.parse(String(init?.body))
     calls.push(request)
     const value = request.method === 'info' ? { protocolVersion: 1 }
-      : request.method === 'sessions' ? [{ sessionId: 's', title: '编辑器上下文接入', directory: '/work', status: 'idle' }]
+      : request.method === 'sessions' ? listed
       : request.method === 'connect' ? { connectionId: 'lease', heartbeatMs: 10_000, state: { sessionId: 's' } }
       : {}
     return Response.json({ type: 'server-response', rpcId: request.rpcId, result: { ok: true, value } })
@@ -61,4 +61,16 @@ test('switching to another workspace clears DSH live context and a new connectio
 test('large UTF-8 selection text falls back to file and line references', () => {
   const value = toDshSnapshot({ ...snapshot, selection: { start: 3, end: 5, text: '中'.repeat(12_000) } }, '/work')
   assert.deepEqual(value.selection, { start: 3, end: 5 })
+})
+
+test('six persisted sessions are offered without connecting; only the selected one is connected', async () => {
+  const history = Array.from({ length: 6 }, (_, i) => ({ sessionId: `history-${i}`, title: `历史会话 ${i}`, directory: '/work', status: 'unloaded' }))
+  const { adapter, calls } = fixture([...history, { sessionId: 'elsewhere', title: 'Other workspace', directory: '/other', status: 'unloaded' }])
+  const found = await adapter.discoverSessions!('/work')
+  assert.ok(Array.isArray(found))
+  assert.deepEqual(found[0]?.sessions.map(item => item.id), history.map(item => item.sessionId))
+  assert.deepEqual(calls.map(call => call.method), ['sessions'])
+  await adapter.connect!({ ...session, sessionID: 'history-3' })
+  assert.deepEqual(calls.filter(call => call.method === 'connect').map(call => call.payload.sessionId), ['history-3'])
+  await adapter.disconnect!({ ...session, sessionID: 'history-3' })
 })

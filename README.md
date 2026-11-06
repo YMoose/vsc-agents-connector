@@ -9,10 +9,12 @@ agent's input area. Each VS Code window connects to one session at a time.
 1. Build and enable [dsh-editor-socket](https://github.com/YMoose/dsh-editor-socket)
    in your DSH profile. Its source is included as `vendor/dsh-editor-socket`.
    See the [socket README](https://github.com/YMoose/dsh-editor-socket/blob/main/README.md) for installation.
-2. Start DSH and open a session whose working directory matches your VS Code
+2. Start DSH and use a session whose working directory matches your VS Code
    workspace. Tested with DSH `0.2.2-rc.1`.
 3. Run **VSC Agents: Connect to Local Service**, then choose the DSH session.
    The extension discovers local instances automatically; no token copying is needed.
+   With socket `0.1.2+`, persisted sessions are listed even before you open them in
+   DSH. Only the selected session is resumed; opening the picker does not load all history.
 4. Click or select code. DSH's existing composer shows the current file and line
    range. Send your message in DSH to give that context to the agent.
 
@@ -73,7 +75,7 @@ npm run package
 
 Compilation builds the SDK subset from the pinned submodule, then the extension.
 Press `F5` to launch an Extension Development Host. Install the resulting
-`vsc-agents-connector-0.3.1.vsix` to try it in a regular VS Code window.
+`vsc-agents-connector-0.3.2.vsix` to try it in a regular VS Code window.
 
 Changes to the socket should be committed and pushed in its own repository before
 pushing a parent commit that references them. Updating the submodule does not
@@ -88,3 +90,6 @@ disconnect/reconnect, and wide/narrow layout checks using a local recording mode
 Its `--titles` fixture and `check-title.mjs` also check picker/status-bar titles,
 full hovers, reconnect after a Web rename, window-reload persistence, and untitled
 session fallback through the real VS Code UI.
+The socket's `npm run test:history` additionally restarts a real isolated DSH
+profile, verifies six persisted sessions through this compiled adapter, and checks
+that discovery loads none while connection resumes only the selected session.

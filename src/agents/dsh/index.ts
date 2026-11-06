@@ -46,7 +46,7 @@ export function createDshAdapter(options: {
     if (!session.directory) throw new Error('DSH requires a workspace directory')
     await release()
     const { EditorPlug } = await sdk()
-    const plug = new EditorPlug({ url: session.url, headers: { authorization: session.header }, fetch: options.fetch })
+    const plug = new EditorPlug({ url: session.url, headers: { authorization: session.header }, fetch: options.fetch, timeoutMs: 30_000 })
     await plug.connect({ sessionId: session.sessionID, clientId, editor: 'VS Code', workspace: session.directory })
     active = { key: key(session), plug }
     return plug
@@ -58,7 +58,8 @@ export function createDshAdapter(options: {
       const { EditorPlug } = await sdk()
       const found = await Promise.all(registrations.map(async (registration): Promise<DiscoveredSessions | undefined> => {
         const header = `Bearer ${registration.token}`
-        const plug = new EditorPlug({ url: registration.url, headers: { authorization: header }, fetch: options.fetch, timeoutMs: 1500 })
+        // A persisted-session listing can need disk/cache reads after DSH starts.
+        const plug = new EditorPlug({ url: registration.url, headers: { authorization: header }, fetch: options.fetch, timeoutMs: 10_000 })
         try {
           const all = await plug.sessions()
           const sessions = workspace ? filterByWorkspace(all.map(session => ({ ...session, id: session.sessionId })), workspace) : all

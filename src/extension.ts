@@ -111,7 +111,7 @@ async function connectFromService(agentId?: string) {
 
   if (candidates.length === 0) {
     if (agentId === 'dsh') {
-      vscode.window.showInformationMessage('DSH: start dsh with dsh-editor-socket enabled and open a session in this workspace.')
+      vscode.window.showInformationMessage('DSH: start dsh with dsh-editor-socket enabled. Sessions must match this workspace directory.')
       return
     }
     const pick = await vscode.window.showInformationMessage(
