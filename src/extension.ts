@@ -245,6 +245,17 @@ async function send(mode: "selection" | "file") {
     return
   }
 
+  const adapter = getAdapter(session.agentId)
+  // Follow-only agents replace the current reference, with no saved pins or task.
+  if (adapter?.liveFollow && !adapter.liveFollow.pin && !adapter.sendPrompt) {
+    if (await manager?.liveUpdate(snapshot)) {
+      vscode.window.setStatusBarMessage(`${adapter.displayName}: following ${snapshot.relativePath}`, 3000)
+    } else {
+      vscode.window.showWarningMessage(`${adapter.displayName}: could not sync this reference. Reconnect the session and check its workspace.`)
+    }
+    return
+  }
+
   // Preferred path: pin the live chip through the agent's live channel.
   if (await manager?.livePin(snapshot)) {
     const name = getAdapter(session.agentId)?.displayName ?? session.agentId
@@ -252,7 +263,7 @@ async function send(mode: "selection" | "file") {
     return
   }
   if (!getAdapter(session.agentId)?.sendPrompt) {
-    vscode.window.showWarningMessage('DSH: could not pin this reference. Reconnect the session and check that the file belongs to its workspace.')
+    vscode.window.showWarningMessage('VSC Agents: could not send this reference. Reconnect the session and check its workspace.')
     return
   }
 

@@ -41,7 +41,7 @@ export type LiveFollowChannel = {
    * Explicit pin: commit the live chip. Returns false when the agent's live
    * channel is unavailable so the caller can fall back to sendPrompt.
    */
-  pin(session: ConnectedSession, snapshot: EditorSnapshot | undefined): Promise<boolean>
+  pin?(session: ConnectedSession, snapshot: EditorSnapshot | undefined): Promise<boolean>
   /** Editor lost its file; clear the chip. */
   clear(session: ConnectedSession): Promise<void>
 }

@@ -19,8 +19,9 @@ agent's input area. Each VS Code window connects to one session at a time.
    range. Send your message in DSH to give that context to the agent.
 
 **Send Selection to Session** (`Ctrl+Alt+O` / `Cmd+Alt+O`) and **Send File Reference
-to Session** pin references for the next message. Clicking, selecting and pinning
-do not start DSH model tasks. References freeze when the user submits a message,
+to Session** refresh the current DSH reference. The composer shows a compact
+file/range chip with an × to clear it; selecting another file or range resumes following.
+DSH has no pin feature. Clicking, selecting and clearing do not start model tasks. References freeze when the user submits a message,
 including when that message queues behind another task. Selected buffer text may
 include unsaved edits; text over 32 KiB falls back to path and line references.
 
@@ -28,8 +29,9 @@ The socket listens only on loopback and uses a per-activation bearer token.
 The extension runs on the workspace side of Remote SSH / containers, so the editor
 adapter and DSH must run on the same machine and share filesystem paths. Start a
 new local-service connection after DSH restarts and rotates its endpoint/token.
-Clicking outside the connected workspace clears live DSH context. Explicit pins
-remain until submitted or removed in DSH. Disabling live follow clears the live reference.
+Clicking outside the connected workspace or disabling live follow clears live DSH context.
+Connector 0.3.3 requires socket 0.2.0+ (protocol v2); update both and reconnect.
+OpenCode retains its existing explicit pin behavior.
 
 ## OpenCode connections
 

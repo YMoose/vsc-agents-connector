@@ -89,20 +89,22 @@ export class ConnectionManager implements vscode.Disposable {
   /** Live-follow update routed to the active adapter. */
   liveUpdate(snapshot: EditorSnapshot | undefined) {
     return this.enqueue(async () => {
-      if (this.stopped) return
+      if (this.stopped) return false
       const session = await this.current()
-      if (!session) return
+      if (!session) return false
       const adapter = getAdapter(session.agentId)
-      if (!adapter?.liveFollow) return
-      if (this.liveFailed) return
+      if (!adapter?.liveFollow) return false
+      if (this.liveFailed) return false
       try {
         if (snapshot) await adapter.liveFollow.update(session, snapshot)
         else await adapter.liveFollow.clear(session)
         this.liveFailed = false
+        return true
       } catch (error) {
         this.liveFailed = true
         this.statusBar.text = `$(warning) ${adapter.displayName}: reconnect`
         this.statusBar.tooltip = `${error instanceof Error ? error.message : 'Editor connection unavailable'}\nClick to reconnect`
+        return false
       }
     })
   }
@@ -117,7 +119,7 @@ export class ConnectionManager implements vscode.Disposable {
       const session = await this.current()
       if (!session) return false
       const adapter = getAdapter(session.agentId)
-      if (!adapter?.liveFollow) return false
+      if (!adapter?.liveFollow?.pin) return false
       try {
         const ok = await adapter.liveFollow.pin(session, snapshot)
         this.liveFailed = !ok

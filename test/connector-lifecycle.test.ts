@@ -80,3 +80,18 @@ test('session titles survive restore, refresh on reconnect and clear when switch
   manager.dispose()
   restored.dispose()
 })
+
+test('follow-only adapters synchronize and clear without requiring a pin capability', async () => {
+  const order: string[] = []
+  const adapter: AgentAdapter = { id: 'follow-only-test', displayName: 'Follow',
+    liveFollow: { update: async () => { order.push('update') }, clear: async () => { order.push('clear') } },
+  }
+  registerAdapter(adapter)
+  const manager = new ConnectionManager(createContext())
+  await manager.connect({ agentId: adapter.id, sessionID: 's', url: 'http://localhost', header: 'test' })
+  assert.equal(await manager.livePin(undefined), false)
+  assert.equal(await manager.liveUpdate({ fsPath: '/work/a', relativePath: 'a' }), true)
+  assert.equal(await manager.liveUpdate(undefined), true)
+  assert.deepEqual(order, ['update', 'clear'])
+  manager.dispose()
+})

@@ -78,12 +78,6 @@ export function createDshAdapter(options: {
         if (!snapshot?.workspaceFolder || !filterByWorkspace([{ id: '', directory: snapshot.workspaceFolder }], session.directory!).length) await plug.clear()
         else await plug.update(toDshSnapshot(snapshot, session.directory!))
       }),
-      pin: (session, snapshot) => serial(async () => {
-        const plug = await ensure(session)
-        if (!snapshot) return false
-        await plug.pin(toDshSnapshot(snapshot, session.directory!))
-        return true
-      }),
       clear: session => serial(async () => { await (await ensure(session)).clear() }),
     },
   }

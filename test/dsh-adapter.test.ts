@@ -12,14 +12,14 @@ function fixture(listed = [{ sessionId: 's', title: '编辑器上下文接入', 
     assert.equal(init?.redirect, 'error')
     const request = JSON.parse(String(init?.body))
     calls.push(request)
-    const value = request.method === 'info' ? { protocolVersion: 1 }
+    const value = request.method === 'info' ? { protocolVersion: 2 }
       : request.method === 'sessions' ? listed
       : request.method === 'connect' ? { connectionId: 'lease', heartbeatMs: 10_000, state: { sessionId: 's' } }
       : {}
     return Response.json({ type: 'server-response', rpcId: request.rpcId, result: { ok: true, value } })
   }
   const adapter = createDshAdapter({ fetch: fetchFn, clientId: 'window', discover: async () => [
-    { protocolVersion: 1, instanceId: 'instance', pid: 1234, url: session.url, token: 'test' },
+    { protocolVersion: 2, instanceId: 'instance', pid: 1234, url: session.url, token: 'test' },
   ] })
   return { adapter, calls }
 }
@@ -34,16 +34,17 @@ test('DSH discovers matching sessions and serializes editor operations through i
   await adapter.connect!(session)
   await Promise.all([
     adapter.liveFollow!.update(session, snapshot),
-    adapter.liveFollow!.pin(session, snapshot),
+    adapter.liveFollow!.clear(session),
     adapter.disconnect!(session),
   ])
-  const mutations = calls.filter(call => ['update', 'pin', 'disconnect'].includes(call.method))
-  assert.deepEqual(mutations.map(call => call.method), ['update', 'pin', 'disconnect'])
+  const mutations = calls.filter(call => ['update', 'clear', 'disconnect'].includes(call.method))
+  assert.deepEqual(mutations.map(call => call.method), ['update', 'clear', 'disconnect'])
   assert.deepEqual(mutations.map(call => call.payload.sequence), [1, 2, 3])
   assert.deepEqual(mutations[0]?.payload.snapshot, {
     path: '/work/a.ts', workspace: '/work', selection: { start: 1, end: 2, text: 'unsaved' },
   })
-  assert.equal(adapter.sendPrompt, undefined, 'clicks and pins never fall back to a model task')
+  assert.equal(adapter.liveFollow!.pin, undefined, 'DSH has no pin capability')
+  assert.equal(adapter.sendPrompt, undefined, 'editor sync never falls back to a model task')
 })
 
 test('switching to another workspace clears DSH live context and a new connection rotates the lease', async () => {
