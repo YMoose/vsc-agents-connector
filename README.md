@@ -85,3 +85,6 @@ and findings are maintained in the socket repository's
 (`vendor/dsh-editor-socket/docs/testing/gui.md` in this checkout). The guide covers
 file clicks, mouse selections, pins, unsaved buffer text, a real composer send,
 disconnect/reconnect, and wide/narrow layout checks using a local recording model.
+Its `--titles` fixture and `check-title.mjs` also check picker/status-bar titles,
+full hovers, reconnect after a Web rename, window-reload persistence, and untitled
+session fallback through the real VS Code UI.
