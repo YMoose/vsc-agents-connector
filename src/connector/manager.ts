@@ -22,6 +22,14 @@ export class ConnectionManager implements vscode.Disposable {
   private readonly statusBar: vscode.StatusBarItem
   /** Set when the agent's live channel is down; explicit send then falls back. */
   private liveFailed = false
+  private tail: Promise<unknown> = Promise.resolve()
+  private stopped = false
+
+  private enqueue<T>(work: () => Promise<T>): Promise<T> {
+    const result = this.tail.then(work)
+    this.tail = result.catch(() => {})
+    return result
+  }
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
@@ -29,17 +37,32 @@ export class ConnectionManager implements vscode.Disposable {
     context.subscriptions.push(this.statusBar)
   }
 
-  async connect(session: ConnectedSession) {
-    await this.context.secrets.store(SECRET_HEADER, session.header)
-    await this.context.workspaceState.update(STATE_AGENT, session.agentId)
-    await this.context.workspaceState.update(STATE_URL, session.url)
-    await this.context.workspaceState.update(STATE_SESSION, session.sessionID)
-    await this.context.workspaceState.update(STATE_DIRECTORY, session.directory)
-    this.liveFailed = false
-    this.render(session)
+  connect(session: ConnectedSession) {
+    return this.enqueue(async () => {
+      const previous = await this.current()
+      if (previous) await getAdapter(previous.agentId)?.disconnect?.(previous)
+      // Do not leave a failed connection displayed as connected.
+      await this.clearStored()
+      await getAdapter(session.agentId)?.connect?.(session)
+      await this.context.secrets.store(SECRET_HEADER, session.header)
+      await this.context.workspaceState.update(STATE_AGENT, session.agentId)
+      await this.context.workspaceState.update(STATE_URL, session.url)
+      await this.context.workspaceState.update(STATE_SESSION, session.sessionID)
+      await this.context.workspaceState.update(STATE_DIRECTORY, session.directory)
+      this.liveFailed = false
+      this.render(session)
+    })
   }
 
-  async disconnect() {
+  disconnect() {
+    return this.enqueue(async () => {
+      const previous = await this.current()
+      if (previous) await getAdapter(previous.agentId)?.disconnect?.(previous)
+      await this.clearStored()
+    })
+  }
+
+  private async clearStored() {
     await this.context.secrets.delete(SECRET_HEADER)
     await this.context.workspaceState.update(STATE_AGENT, undefined)
     await this.context.workspaceState.update(STATE_URL, undefined)
@@ -60,47 +83,65 @@ export class ConnectionManager implements vscode.Disposable {
   }
 
   /** Live-follow update routed to the active adapter. */
-  async liveUpdate(snapshot: EditorSnapshot | undefined) {
-    const session = await this.current()
-    if (!session) return
-    const adapter = getAdapter(session.agentId)
-    if (!adapter?.liveFollow) return
-    if (this.liveFailed) return
-    try {
-      if (snapshot) await adapter.liveFollow.update(session, snapshot)
-      else await adapter.liveFollow.clear(session)
-      this.liveFailed = false
-    } catch {
-      this.liveFailed = true
-    }
+  liveUpdate(snapshot: EditorSnapshot | undefined) {
+    return this.enqueue(async () => {
+      if (this.stopped) return
+      const session = await this.current()
+      if (!session) return
+      const adapter = getAdapter(session.agentId)
+      if (!adapter?.liveFollow) return
+      if (this.liveFailed) return
+      try {
+        if (snapshot) await adapter.liveFollow.update(session, snapshot)
+        else await adapter.liveFollow.clear(session)
+        this.liveFailed = false
+      } catch (error) {
+        this.liveFailed = true
+        this.statusBar.text = `$(warning) ${adapter.displayName}: reconnect`
+        this.statusBar.tooltip = `${error instanceof Error ? error.message : 'Editor connection unavailable'}\nClick to reconnect`
+      }
+    })
   }
 
   /**
    * Explicit pin. Returns true when the agent handled it through its live
    * channel; false means the caller should fall back to sendPrompt.
    */
-  async livePin(snapshot: EditorSnapshot | undefined): Promise<boolean> {
-    const session = await this.current()
-    if (!session) return false
-    const adapter = getAdapter(session.agentId)
-    if (!adapter?.liveFollow) return false
-    try {
-      const ok = await adapter.liveFollow.pin(session, snapshot)
-      this.liveFailed = !ok
-      return ok
-    } catch {
-      this.liveFailed = true
-      return false
-    }
+  livePin(snapshot: EditorSnapshot | undefined): Promise<boolean> {
+    return this.enqueue(async () => {
+      if (this.stopped) return false
+      const session = await this.current()
+      if (!session) return false
+      const adapter = getAdapter(session.agentId)
+      if (!adapter?.liveFollow) return false
+      try {
+        const ok = await adapter.liveFollow.pin(session, snapshot)
+        this.liveFailed = !ok
+        return ok
+      } catch {
+        this.liveFailed = true
+        return false
+      }
+    })
   }
 
   /** Explicit send of an instruction plus the editor context. */
-  async sendPrompt(snapshot: EditorSnapshot, instruction: string) {
-    const session = await this.current()
-    if (!session) throw new Error("not connected")
-    const adapter = getAdapter(session.agentId)
-    if (!adapter) throw new Error(`no adapter registered for agent '${session.agentId}'`)
-    await adapter.sendPrompt(session, snapshot, instruction)
+  sendPrompt(snapshot: EditorSnapshot, instruction: string) {
+    return this.enqueue(async () => {
+      const session = await this.current()
+      if (!session) throw new Error("not connected")
+      const adapter = getAdapter(session.agentId)
+      if (!adapter?.sendPrompt) throw new Error('This agent accepts context references; send your message in its input area')
+      await adapter.sendPrompt(session, snapshot, instruction)
+    })
+  }
+
+  shutdown(): Promise<void> {
+    this.stopped = true
+    return this.enqueue(async () => {
+      const session = await this.current()
+      if (session) await getAdapter(session.agentId)?.disconnect?.(session)
+    })
   }
 
   render(session: ConnectedSession | undefined) {

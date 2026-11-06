@@ -1,8 +1,8 @@
 {
   "name": "vsc-agents-connector",
   "displayName": "VSC Agents Connector",
-  "description": "Connects VS Code to coding agents (opencode and more): receive a vscode:// connect link and send editor context (file + selection) to the connected agent session.",
-  "version": "0.2.0",
+  "description": "Connect VS Code file and selection context to OpenCode and DeepSeek Harness (DSH).",
+  "version": "0.3.0",
   "publisher": "moose",
   "license": "MIT",
   "private": true,
@@ -83,17 +83,26 @@
     }
   },
   "scripts": {
-    "compile": "tsc -p .",
+    "compile": "npm run prepare:dsh && tsc -p .",
     "watch": "tsc -watch -p .",
     "test": "node --test \"out/test/**/*.test.js\"",
-    "pretest": "tsc -p .",
-    "check": "tsc -p . --noEmit",
-    "package": "vsce package --no-dependencies --allow-missing-repository"
+    "pretest": "npm run compile",
+    "check": "npm run prepare:dsh && tsc -p . --noEmit",
+    "package": "vsce package --no-dependencies --allow-missing-repository",
+    "prepare:dsh": "node scripts/prepare-dsh.mjs",
+    "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/vscode": "^1.95.0",
     "@vscode/vsce": "^4.0.0",
     "typescript": "^5.7.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YMoose/vsc-agents-connector.git"
   }
 }

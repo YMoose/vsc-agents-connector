@@ -17,6 +17,8 @@ export type AgentSession = {
   updatedAt?: number
 }
 
+export type DiscoveredSessions = { url: string; header: string; sessions: AgentSession[] }
+
 /** A persisted, connected session for one agent. */
 export type ConnectedSession = {
   /** Which agent this connection belongs to. */
@@ -47,7 +49,11 @@ export interface AgentAdapter {
   readonly displayName: string
 
   /** Discover locally-running sessions for the connect QuickPick. */
-  discoverSessions?(workspace?: string): Promise<{ url: string; header: string; sessions: AgentSession[] } | undefined>
+  discoverSessions?(workspace?: string): Promise<DiscoveredSessions | DiscoveredSessions[] | undefined>
+
+  /** Acquire/release an agent-specific live connection (e.g. an editor lease). */
+  connect?(session: ConnectedSession): Promise<void>
+  disconnect?(session: ConnectedSession): Promise<void>
 
   /** Connect from an inbound vscode://…/connect URI. */
   connectFromUri?(query: URLSearchParams, workspace?: string): Promise<Omit<ConnectedSession, "agentId">>
@@ -59,5 +65,5 @@ export interface AgentAdapter {
   readonly liveFollow?: LiveFollowChannel
 
   /** Send an explicit instruction plus the editor context as a prompt. */
-  sendPrompt(session: ConnectedSession, snapshot: EditorSnapshot, instruction: string): Promise<void>
+  sendPrompt?(session: ConnectedSession, snapshot: EditorSnapshot, instruction: string): Promise<void>
 }

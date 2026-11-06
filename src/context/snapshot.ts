@@ -11,6 +11,8 @@
 export type SelectionRange = {
   start: number
   end: number
+  /** Selected buffer text, including unsaved edits, when within the capture limit. */
+  text?: string
 }
 
 /** A point-in-time view of the editor the user is working in. */

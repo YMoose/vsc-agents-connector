@@ -1,0 +1,3 @@
+[submodule "vendor/dsh-editor-socket"]
+	path = vendor/dsh-editor-socket
+	url = git@github.com:YMoose/dsh-editor-socket.git

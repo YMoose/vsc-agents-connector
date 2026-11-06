@@ -8,3 +8,7 @@ tsconfig.json
 .gitignore
 *.vsix
 docs
+vendor
+scripts
+tsconfig.dsh.json
+.gitmodules

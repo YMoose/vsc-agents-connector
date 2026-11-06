@@ -17,6 +17,7 @@ import { allAdapters, getAdapter, registerAdapter } from "./connector/registry"
 import { filterByWorkspace } from "./connector/workspace"
 import type { AgentAdapter } from "./connector/types"
 import { createOpencodeAdapter, manualConnect } from "./agents/opencode"
+import { createDshAdapter } from "./agents/dsh"
 
 let manager: ConnectionManager | undefined
 let watcher: ContextWatcher | undefined
@@ -28,6 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
       readDir: async (path) => (await vscode.workspace.fs.readDirectory(vscode.Uri.file(path))).map(([name]) => name),
     }),
   )
+  registerAdapter(createDshAdapter())
 
   manager = new ConnectionManager(context)
   context.subscriptions.push(manager)
@@ -54,7 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
   void manager.current().then((session) => manager?.render(session))
 }
 
-export function deactivate() {}
+export function deactivate() { return manager?.shutdown() }
 
 // ---------------------------------------------------------------------------
 // Connecting (UI flows; protocol lives in each adapter)
@@ -92,19 +94,26 @@ function pickAdapterForUri(query: URLSearchParams): AgentAdapter | undefined {
 }
 
 /** Zero-config: ask every adapter to discover local sessions, pick one. */
-async function connectFromService() {
+async function connectFromService(agentId?: string) {
   const candidates: Array<{ adapter: AgentAdapter; url: string; header: string; sessions: import("./connector/types").AgentSession[] }> = []
   for (const adapter of allAdapters()) {
+    if (agentId && adapter.id !== agentId) continue
     if (!adapter.discoverSessions) continue
     try {
       const found = await adapter.discoverSessions(workspacePath())
-      if (found && found.sessions.length > 0) candidates.push({ adapter, ...found })
+      for (const group of Array.isArray(found) ? found : found ? [found] : []) {
+        if (group.sessions.length > 0) candidates.push({ adapter, ...group })
+      }
     } catch (err) {
       console.warn(`vsc-agents: discovery for ${adapter.id} failed`, err)
     }
   }
 
   if (candidates.length === 0) {
+    if (agentId === 'dsh') {
+      vscode.window.showInformationMessage('DSH: start dsh with dsh-editor-socket enabled and open a session in this workspace.')
+      return
+    }
     const pick = await vscode.window.showInformationMessage(
       "VSC Agents: no local agent sessions found. Start your agent's service or connect manually.",
       "Connect manually…",
@@ -148,21 +157,26 @@ async function connectFromService() {
         })
   if (!picked) return
 
-  await manager?.connect({
-    agentId: picked.adapter.id,
-    sessionID: picked.session.id,
-    url: picked.url,
-    header: picked.header,
-    directory: picked.session.directory,
-  })
-  watcher?.reset()
-  vscode.window.showInformationMessage(`${picked.adapter.displayName}: connected to ${picked.session.title || picked.session.id}.`)
+  try {
+    await manager?.connect({
+      agentId: picked.adapter.id,
+      sessionID: picked.session.id,
+      url: picked.url,
+      header: picked.header,
+      directory: picked.session.directory,
+    })
+    watcher?.reset()
+    vscode.window.showInformationMessage(`${picked.adapter.displayName}: connected to ${picked.session.title || picked.session.id}.`)
+  } catch (err) {
+    vscode.window.showErrorMessage(`${picked.adapter.displayName} connect failed: ${message(err)}`)
+  }
 }
 
 /** Manual fallback: pick an agent, then enter URL + password + session id. */
 async function connectInteractive() {
   const adapter = await pickAdapter()
   if (!adapter) return
+  if (adapter.id === 'dsh') { await connectFromService('dsh'); return }
 
   const url = await vscode.window.showInputBox({
     title: `Connect to ${adapter.displayName} (1/3)`,
@@ -234,6 +248,10 @@ async function send(mode: "selection" | "file") {
   if (await manager?.livePin(snapshot)) {
     const name = getAdapter(session.agentId)?.displayName ?? session.agentId
     vscode.window.setStatusBarMessage(`${name}: pinned ${snapshot.relativePath} in the prompt`, 3000)
+    return
+  }
+  if (!getAdapter(session.agentId)?.sendPrompt) {
+    vscode.window.showWarningMessage('DSH: could not pin this reference. Reconnect the session and check that the file belongs to its workspace.')
     return
   }
 

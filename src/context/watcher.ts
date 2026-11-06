@@ -12,19 +12,25 @@ import type { EditorSnapshot, SelectionRange } from "./snapshot"
 /** Snapshot of the active editor, or undefined when there is none on disk. */
 export function readEditorSnapshot(mode: "selection" | "file" = "selection"): EditorSnapshot | undefined {
   const editor = vscode.window.activeTextEditor
-  if (!editor || editor.document.isUntitled) return undefined
+  if (!editor || editor.document.isUntitled || editor.document.uri.scheme !== 'file') return undefined
   const document = editor.document
   return {
     fsPath: document.uri.fsPath,
     relativePath: vscode.workspace.asRelativePath(document.uri, false),
     workspaceFolder: vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath,
-    selection: toRange(editor.selection, mode),
+    selection: toRange(editor, mode),
   }
 }
 
-function toRange(selection: vscode.Selection, mode: "selection" | "file"): SelectionRange | undefined {
+function toRange(editor: vscode.TextEditor, mode: "selection" | "file"): SelectionRange | undefined {
+  const { selection, document } = editor
   if (mode === "file" || selection.isEmpty) return undefined
-  return { start: selection.start.line + 1, end: selection.end.line + 1 }
+  const start = selection.start.line + 1
+  const end = selection.end.line + (selection.end.character === 0 && selection.end.line > selection.start.line ? 0 : 1)
+  // Bound the buffer read before allocating the selected string.
+  const length = document.offsetAt(selection.end) - document.offsetAt(selection.start)
+  const text = length <= 32768 ? document.getText(selection) : undefined
+  return { start, end, ...(text !== undefined && Buffer.byteLength(text, 'utf8') <= 32768 ? { text } : {}) }
 }
 
 export type ContextChange = (snapshot: EditorSnapshot | undefined) => void
@@ -36,7 +42,7 @@ export type ContextChange = (snapshot: EditorSnapshot | undefined) => void
  */
 export class ContextWatcher implements vscode.Disposable {
   private timer: NodeJS.Timeout | undefined
-  private lastKey = ""
+  private lastKey: string | undefined
   private readonly disposables: vscode.Disposable[] = []
 
   constructor(
@@ -49,6 +55,9 @@ export class ContextWatcher implements vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidChangeTextEditorSelection(push),
       vscode.window.onDidChangeActiveTextEditor(() => this.schedule(0)),
+      vscode.workspace.onDidChangeTextDocument(event => {
+        if (event.document === vscode.window.activeTextEditor?.document) this.schedule()
+      }),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration("vscAgents.liveFollow")) this.schedule(0)
       }),
@@ -62,8 +71,7 @@ export class ContextWatcher implements vscode.Disposable {
   }
 
   private emit() {
-    if (!this.options.enabled()) return
-    const snapshot = readEditorSnapshot("selection")
+    const snapshot = this.options.enabled() ? readEditorSnapshot("selection") : undefined
     const key = snapshotKey(snapshot)
     if (key === this.lastKey) return
     this.lastKey = key
@@ -72,7 +80,8 @@ export class ContextWatcher implements vscode.Disposable {
 
   /** Force a re-emit on the next event (e.g. after reconnecting). */
   reset() {
-    this.lastKey = ""
+    this.lastKey = undefined
+    this.schedule(0)
   }
 
   dispose() {
@@ -85,5 +94,5 @@ export class ContextWatcher implements vscode.Disposable {
 export function snapshotKey(snapshot: EditorSnapshot | undefined): string {
   if (!snapshot) return ""
   const sel = snapshot.selection
-  return `${snapshot.fsPath}#${sel ? `${sel.start}-${sel.end}` : ""}`
+  return JSON.stringify([snapshot.fsPath, snapshot.workspaceFolder, sel])
 }

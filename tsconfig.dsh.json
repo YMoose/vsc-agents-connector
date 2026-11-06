@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "module": "NodeNext", "moduleResolution": "NodeNext", "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"], "types": ["node"],
+    "strict": true, "skipLibCheck": true, "declaration": true,
+    "rewriteRelativeImportExtensions": true,
+    "rootDir": "vendor/dsh-editor-socket/src", "outDir": "vendor/dsh-editor-socket/lib"
+  },
+  "include": ["vendor/dsh-editor-socket/src/plug.ts", "vendor/dsh-editor-socket/src/discovery.ts"]
+}

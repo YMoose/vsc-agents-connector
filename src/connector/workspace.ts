@@ -9,10 +9,11 @@
  */
 
 import type { AgentSession } from "./types"
+import { posix } from "node:path"
 
 /** Normalize a directory for comparison: strip trailing slashes. */
 function normalize(directory: string): string {
-  return directory.replace(/\/+$/, "")
+  return posix.normalize(directory.replaceAll("\\", "/")).replace(/\/+$/, "").replace(/^[A-Z]:/, drive => drive.toLowerCase())
 }
 
 /** Sessions whose directory is exactly the workspace folder. */

@@ -1,89 +1,77 @@
 # vsc-agents-connector
 
-VS Code extension that connects the editor to coding agents — currently
-[opencode](https://opencode.ai), with the VS Code side abstracted so more agents
-can be plugged in later.
+One lightweight VS Code extension for editor context in **OpenCode** and
+**DeepSeek Harness (DSH)**. Click a file or select text to update the connected
+agent's input area. Each VS Code window connects to one session at a time.
 
-## Architecture: three layers
+## DSH setup
 
-```
-┌─ Layer 1  src/context/    read & watch the VS Code editor (snapshot only)
-├─ Layer 2  src/connector/  agent registry, connection persistence, dispatch
-└─ Layer 3  src/agents/     per-agent protocol (opencode today)
-```
+1. Build and enable [dsh-editor-socket](https://github.com/YMoose/dsh-editor-socket)
+   in your DSH profile. Its source is included as `vendor/dsh-editor-socket`.
+   See the [socket README](https://github.com/YMoose/dsh-editor-socket/blob/main/README.md) for installation.
+2. Start DSH and open a session whose working directory matches your VS Code
+   workspace. Tested with DSH `0.2.2-rc.1`.
+3. Run **VSC Agents: Connect to Local Service**, then choose the DSH session.
+   The extension discovers local instances automatically; no token copying is needed.
+4. Click or select code. DSH's existing composer shows the current file and line
+   range. Send your message in DSH to give that context to the agent.
 
-- **Layer 1 — `src/context/`** talks only to the `vscode` API. It produces an
-  `EditorSnapshot` (`{ fsPath, relativePath, workspaceFolder, selection? }`)
-  and watches selection/active-editor changes with debounce + dedupe. It knows
-  nothing about agents or reference formatting.
-- **Layer 2 — `src/connector/`** owns the single active connection. It keeps a
-  registry of `AgentAdapter`s, persists the connection (secret header in
-  SecretStorage, the rest per-workspace), renders the status bar, and routes
-  Layer-1 snapshots to the active adapter's live-follow channel or its
-  explicit `sendPrompt`.
-- **Layer 3 — `src/agents/<id>/`** is the extension point. Each agent
-  implements `AgentAdapter` (`src/connector/types.ts`): session discovery,
-  `vscode://` pairing, manual connect, optional live-follow, and `sendPrompt` —
-  plus the formatting of an `EditorSnapshot` into its own reference syntax
-  (opencode: `@path#L1-2` / `file://…?start&end`). opencode's live-follow
-  bridge (`editor-bridge`) is a builtin server plugin, so it needs no
-  server-side companion plugin installation.
+**Send Selection to Session** (`Ctrl+Alt+O` / `Cmd+Alt+O`) and **Send File Reference
+to Session** pin references for the next message. Clicking, selecting and pinning
+do not start DSH model tasks. References freeze when the user submits a message,
+including when that message queues behind another task. Selected buffer text may
+include unsaved edits; text over 32 KiB falls back to path and line references.
 
-Adding a new agent = implement `AgentAdapter` under `src/agents/<id>/` and
-register it in `extension.ts`. Layers 1 and 2 do not change.
+The socket listens only on loopback and uses a per-activation bearer token.
+The extension runs on the workspace side of Remote SSH / containers, so the editor
+adapter and DSH must run on the same machine and share filesystem paths. Start a
+new local-service connection after DSH restarts and rotates its endpoint/token.
+Clicking outside the connected workspace clears live DSH context. Explicit pins
+remain until submitted or removed in DSH. Disabling live follow clears the live reference.
 
-## Connect: three ways, best first
+## OpenCode connections
 
-1. **VSC Agents: Connect to Local Service** — fully automatic. The extension reads the
-   background service's registration file (`~/.local/state/opencode/service.json`, the
-   documented discovery contract), lists its sessions, and asks you to pick one; a session
-   whose directory matches the workspace is pre-selected. Nothing to type.
-2. **`vscode://` link** — the opencode app (or any tool) opens
-   `vscode://moose.vsc-agents-connector/connect?url=…&code=…&session=…`; the extension
-   redeems the one-time pairing code for a session token. This is the path for remote
-   servers and for a future app-side button; see `docs/bridge.md`.
-3. **VSC Agents: Connect to Session** — manual fallback: server URL + password + session id.
+- **Connect to Local Service** reads OpenCode's service registration and offers
+  sessions in the workspace.
+- A `vscode://moose.vsc-agents-connector/connect?url=…&code=…&session=…` link
+  redeems a pairing code. See [docs/bridge.md](docs/bridge.md).
+- **Connect to Session** accepts URL, password and session ID for OpenCode;
+  choosing DSH uses its local discovery flow.
 
-## Features
+OpenCode uses its built-in `editor-bridge`. Explicit send pins the live reference
+when supported; otherwise OpenCode can send a prompt after asking for an instruction.
 
-- **Status bar** connection indicator; click to reconnect.
-- **VSC Agents: Send Selection to Session** (`Ctrl+Alt+O` / `Cmd+Alt+O`, editor context menu):
-  attaches the selected lines as `file://…?start&end` and queues a prompt.
-- **VSC Agents: Send File Reference to Session** (editor title menu): same for the whole file.
-- Token in SecretStorage, connection remembered per workspace.
+Credentials are stored in VS Code SecretStorage; the chosen session is remembered
+per workspace. The status bar shows the connected agent and offers reconnect.
 
-## How it works
+## Architecture
 
-```
-local service                        remote / web case
-─────────────                        ─────────────────
-service.json ──▶ url + password      app ──vscode://…&code──▶ pairing redeem
-        │                                     │
-        └──────▶ GET /api/session ──▶ QuickPick session
-                          │
-                          ▼
-            SecretStorage: { url, credential, sessionID }
-                          │
-  "Send Selection" ── POST /api/session/:id/prompt (delivery: queue)
-```
+| Layer | Responsibility |
+| --- | --- |
+| `src/context/` | Capture and watch editor file, line range and selected buffer text |
+| `src/connector/` | Adapter registry, session persistence, serialized dispatch and connection lifecycle |
+| `src/agents/opencode/` | OpenCode discovery, pairing, live bridge and prompt protocol |
+| `src/agents/dsh/` | DSH instance discovery, session lease, live updates and pins |
+| `vendor/dsh-editor-socket/` | Independent DSH plugin repository, tracked as a Git submodule |
+
+DSH host code lives in the socket repository. The VS Code package builds and
+ships only its editor-neutral `plug`, `discovery` and `protocol` modules; it does
+not include DSH or React runtime dependencies.
 
 ## Development
 
-```bash
-npm install
-npm run compile   # type-check + emit to out/
-npm test          # unit tests for the pure protocol layers (node --test)
+```sh
+git submodule update --init --recursive
+npm ci
+npm run compile
+npm test
+npm run package
 ```
 
-Press `F5` in VS Code to launch an Extension Development Host with the extension loaded.
+Compilation builds the SDK subset from the pinned submodule, then the extension.
+Press `F5` to launch an Extension Development Host. Install the resulting
+`vsc-agents-connector-0.3.0.vsix` to try it in a regular VS Code window.
 
-## Layout
-
-```
-src/wire.ts        pairing-code redeem, prompt building, file:// URIs (no vscode import)
-src/discover.ts    service.json discovery + session listing (no vscode import)
-src/extension.ts   activation, URI handler, commands, status bar, persistence
-test/              node --test unit tests for both pure layers
-docs/bridge.md     app-side bridge contract for the vscode:// path
-```
-
+Changes to the socket should be committed and pushed in its own repository before
+pushing a parent commit that references them. Updating the submodule does not
+publish the DSH plugin or install it into a user's DSH profile.
