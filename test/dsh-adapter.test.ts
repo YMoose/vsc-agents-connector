@@ -50,6 +50,8 @@ test('switching to another workspace clears DSH live context and a new connectio
   await adapter.connect!(session)
   await adapter.liveFollow!.update(session, { ...snapshot, fsPath: '/other/a.ts', workspaceFolder: '/other' })
   assert.equal(calls.at(-1)?.method, 'clear')
+  await adapter.liveFollow!.update(session, { ...snapshot, fsPath: '/outside/a.ts', workspaceFolder: undefined })
+  assert.equal(calls.at(-1)?.method, 'clear', 'a loose file must not leave the previous live reference behind')
   await adapter.connect!(session)
   assert.deepEqual(calls.slice(-3).map(call => call.method), ['disconnect', 'info', 'connect'])
   await adapter.disconnect!(session)

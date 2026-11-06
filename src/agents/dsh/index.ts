@@ -74,7 +74,7 @@ export function createDshAdapter(options: {
     liveFollow: {
       update: (session, snapshot) => serial(async () => {
         const plug = await ensure(session)
-        if (!snapshot || (snapshot.workspaceFolder && !filterByWorkspace([{ id: '', directory: snapshot.workspaceFolder }], session.directory!).length)) await plug.clear()
+        if (!snapshot?.workspaceFolder || !filterByWorkspace([{ id: '', directory: snapshot.workspaceFolder }], session.directory!).length) await plug.clear()
         else await plug.update(toDshSnapshot(snapshot, session.directory!))
       }),
       pin: (session, snapshot) => serial(async () => {
