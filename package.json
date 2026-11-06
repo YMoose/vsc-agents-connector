@@ -2,7 +2,7 @@
   "name": "vsc-agents-connector",
   "displayName": "VSC Agents Connector",
   "description": "Connect VS Code file and selection context to OpenCode and DeepSeek Harness (DSH).",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "moose",
   "license": "MIT",
   "private": true,

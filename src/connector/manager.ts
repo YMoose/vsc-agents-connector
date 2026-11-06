@@ -16,6 +16,7 @@ const SECRET_HEADER = "vscAgents.header"
 const STATE_AGENT = "vscAgents.agentId"
 const STATE_URL = "vscAgents.url"
 const STATE_SESSION = "vscAgents.sessionID"
+const STATE_TITLE = "vscAgents.sessionTitle"
 const STATE_DIRECTORY = "vscAgents.directory"
 
 export class ConnectionManager implements vscode.Disposable {
@@ -48,6 +49,7 @@ export class ConnectionManager implements vscode.Disposable {
       await this.context.workspaceState.update(STATE_AGENT, session.agentId)
       await this.context.workspaceState.update(STATE_URL, session.url)
       await this.context.workspaceState.update(STATE_SESSION, session.sessionID)
+      await this.context.workspaceState.update(STATE_TITLE, session.title)
       await this.context.workspaceState.update(STATE_DIRECTORY, session.directory)
       this.liveFailed = false
       this.render(session)
@@ -67,6 +69,7 @@ export class ConnectionManager implements vscode.Disposable {
     await this.context.workspaceState.update(STATE_AGENT, undefined)
     await this.context.workspaceState.update(STATE_URL, undefined)
     await this.context.workspaceState.update(STATE_SESSION, undefined)
+    await this.context.workspaceState.update(STATE_TITLE, undefined)
     await this.context.workspaceState.update(STATE_DIRECTORY, undefined)
     this.liveFailed = false
     this.render(undefined)
@@ -79,7 +82,8 @@ export class ConnectionManager implements vscode.Disposable {
     const header = await this.context.secrets.get(SECRET_HEADER)
     if (!agentId || !url || !sessionID || !header) return undefined
     const directory = this.context.workspaceState.get<string>(STATE_DIRECTORY)
-    return { agentId, url, sessionID, header, directory }
+    const title = this.context.workspaceState.get<string>(STATE_TITLE)
+    return { agentId, url, sessionID, header, directory, title }
   }
 
   /** Live-follow update routed to the active adapter. */
@@ -147,8 +151,10 @@ export class ConnectionManager implements vscode.Disposable {
   render(session: ConnectedSession | undefined) {
     if (session) {
       const name = getAdapter(session.agentId)?.displayName ?? session.agentId
-      this.statusBar.text = `$(plug) ${name}: ${short(session.sessionID)}`
-      this.statusBar.tooltip = `Connected to ${name} session ${session.sessionID}\n${session.url}\nClick to reconnect`
+      const title = session.title?.trim()
+      const label = title ? shortTitle(title) : short(session.sessionID)
+      this.statusBar.text = `$(plug) ${name}: ${label}`
+      this.statusBar.tooltip = `${title ? `${title}\n` : ''}Connected to ${name} session ${session.sessionID}\n${session.url}\nClick to reconnect`
     } else {
       this.statusBar.text = "$(circle-slash) agent"
       this.statusBar.tooltip = "Not connected to an agent session. Click to connect."
@@ -163,4 +169,10 @@ export class ConnectionManager implements vscode.Disposable {
 
 function short(id: string) {
   return id.length > 12 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id
+}
+
+function shortTitle(title: string) {
+  const chars = Array.from(title.replace(/\s+/g, ' '))
+  const label = chars.length > 40 ? `${chars.slice(0, 39).join('')}…` : chars.join('')
+  return label.replace(/\$\(/g, '\\$(')
 }

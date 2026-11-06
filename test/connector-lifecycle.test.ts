@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import Module from 'node:module'
-import type { ExtensionContext } from 'vscode'
+import type { ExtensionContext, StatusBarItem } from 'vscode'
 import type { AgentAdapter, ConnectedSession } from '../src/connector/types.js'
 import { registerAdapter } from '../src/connector/registry.js'
 
@@ -15,14 +15,18 @@ loader._load = function (name, ...args) {
 const { ConnectionManager } = require('../src/connector/manager.js') as typeof import('../src/connector/manager.js')
 loader._load = original
 
-test('connection switching drains old edits, releases its lease, and refuses unsupported prompt fallback', async () => {
+function createContext(): ExtensionContext {
   const state = new Map<string, unknown>()
   const secrets = new Map<string, string>()
-  const context = {
+  return {
     subscriptions: [],
     workspaceState: { get: (key: string) => state.get(key), update: async (key: string, value: unknown) => { state.set(key, value) } },
     secrets: { get: async (key: string) => secrets.get(key), store: async (key: string, value: string) => { secrets.set(key, value) }, delete: async (key: string) => { secrets.delete(key) } },
   } as unknown as ExtensionContext
+}
+
+test('connection switching drains old edits, releases its lease, and refuses unsupported prompt fallback', async () => {
+  const context = createContext()
   const order: string[] = []
   const adapter: AgentAdapter = { id: 'lifecycle-test', displayName: 'Test',
     connect: async session => { order.push(`connect:${session.sessionID}`) },
@@ -42,4 +46,37 @@ test('connection switching drains old edits, releases its lease, and refuses uns
   assert.equal((await manager.current())?.sessionID, 'second', 'shutdown retains workspace choice for restore')
   await manager.liveUpdate(snapshot)
   assert.equal(order.at(-1), 'disconnect:second')
+})
+
+test('session titles survive restore, refresh on reconnect and clear when switching to an untitled session', async () => {
+  const context = createContext()
+  const manager = new ConnectionManager(context)
+  const bar = context.subscriptions[0] as StatusBarItem
+  const session: ConnectedSession = {
+    agentId: 'title-test', sessionID: 'session-first', title: '编辑器上下文接入',
+    url: 'http://localhost', header: 'test',
+  }
+  await manager.connect(session)
+  assert.equal(bar.text, '$(plug) title-test: 编辑器上下文接入')
+  assert.match(String(bar.tooltip), /编辑器上下文接入\nConnected to title-test session session-first/)
+
+  const restored = new ConnectionManager(context)
+  assert.equal((await restored.current())?.title, session.title)
+  restored.render(await restored.current())
+  assert.equal((context.subscriptions[1] as StatusBarItem).text, bar.text)
+
+  const renamed = '重命名后的会话'.repeat(10)
+  await manager.connect({ ...session, title: renamed })
+  assert.equal((await manager.current())?.title, renamed)
+  assert.equal(bar.text, `$(plug) title-test: ${Array.from(renamed).slice(0, 39).join('')}…`)
+  assert.ok(String(bar.tooltip).startsWith(`${renamed}\n`), 'hover retains the complete title')
+
+  await manager.connect({ ...session, sessionID: 'second', title: undefined })
+  assert.equal((await manager.current())?.title, undefined)
+  assert.equal(bar.text, '$(plug) title-test: second', 'untitled sessions fall back to ID')
+  await manager.disconnect()
+  assert.equal(await manager.current(), undefined)
+  assert.equal(context.workspaceState.get('vscAgents.sessionTitle'), undefined)
+  manager.dispose()
+  restored.dispose()
 })

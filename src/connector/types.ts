@@ -24,6 +24,8 @@ export type ConnectedSession = {
   /** Which agent this connection belongs to. */
   agentId: string
   sessionID: string
+  /** Latest title from session discovery; refreshed on reconnect. */
+  title?: string
   url: string
   /** Rendered `Authorization` header value (stored in SecretStorage). */
   header: string

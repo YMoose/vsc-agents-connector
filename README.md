@@ -42,7 +42,10 @@ OpenCode uses its built-in `editor-bridge`. Explicit send pins the live referenc
 when supported; otherwise OpenCode can send a prompt after asking for an instruction.
 
 Credentials are stored in VS Code SecretStorage; the chosen session is remembered
-per workspace. The status bar shows the connected agent and offers reconnect.
+per workspace. The session picker and status bar show the session title when
+available, falling back to its ID. Long titles are shortened in the status bar;
+hover to see the full title and ID. Reopen **Connect to Local Service** after a
+rename and reconnect to refresh the stored title.
 
 ## Architecture
 
@@ -70,7 +73,7 @@ npm run package
 
 Compilation builds the SDK subset from the pinned submodule, then the extension.
 Press `F5` to launch an Extension Development Host. Install the resulting
-`vsc-agents-connector-0.3.0.vsix` to try it in a regular VS Code window.
+`vsc-agents-connector-0.3.1.vsix` to try it in a regular VS Code window.
 
 Changes to the socket should be committed and pushed in its own repository before
 pushing a parent commit that references them. Updating the submodule does not

@@ -13,7 +13,7 @@ function fixture() {
     const request = JSON.parse(String(init?.body))
     calls.push(request)
     const value = request.method === 'info' ? { protocolVersion: 1 }
-      : request.method === 'sessions' ? [{ sessionId: 's', directory: '/work', status: 'idle' }]
+      : request.method === 'sessions' ? [{ sessionId: 's', title: '编辑器上下文接入', directory: '/work', status: 'idle' }]
       : request.method === 'connect' ? { connectionId: 'lease', heartbeatMs: 10_000, state: { sessionId: 's' } }
       : {}
     return Response.json({ type: 'server-response', rpcId: request.rpcId, result: { ok: true, value } })
@@ -29,6 +29,7 @@ test('DSH discovers matching sessions and serializes editor operations through i
   const found = await adapter.discoverSessions!('/work')
   assert.ok(Array.isArray(found))
   assert.equal(found[0]?.sessions[0]?.id, 's')
+  assert.equal(found[0]?.sessions[0]?.title, '编辑器上下文接入')
   assert.deepEqual(await adapter.discoverSessions!('/other'), [])
   await adapter.connect!(session)
   await Promise.all([

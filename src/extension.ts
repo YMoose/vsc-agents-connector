@@ -161,6 +161,7 @@ async function connectFromService(agentId?: string) {
     await manager?.connect({
       agentId: picked.adapter.id,
       sessionID: picked.session.id,
+      title: picked.session.title,
       url: picked.url,
       header: picked.header,
       directory: picked.session.directory,
